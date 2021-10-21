@@ -1,0 +1,98 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "metadata": {
+        "description": "Name of the Logic App."
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location of the Logic App."
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "[parameters('logicAppName')]",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('logicAppLocation')]",
+      "tags": {
+        "displayName": "LogicApp"
+      },
+      "apiVersion": "2016-06-01",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "Try": {
+              "type": "Scope",
+              "actions": {
+                "Compose": {
+                  "type": "Compose",
+                  "inputs": "@triggerBody()",
+                  "runAfter": {}
+                },
+                "HTTP": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "POST",
+                    "uri": "http://test.com",
+                    "headers": {
+                      "Content-Type": "application/json"
+                    },
+                    "body": "@outputs('Compose')"
+                  },
+                  "runAfter": {
+                    "Compose": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "runAfter": {}
+            },
+            "Catch": {
+              "type": "Scope",
+              "actions": {
+                "Response": {
+                  "type": "Response",
+                  "kind": "http",
+                  "inputs": {
+                    "statusCode": 500,
+                    "body": "@result('Try')"
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "Try": [
+                  "Failed"
+                ]
+              }
+            }
+          },
+          "parameters": {},
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {}
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {}
+      }
+    }
+  ],
+  "outputs": {}
+}
